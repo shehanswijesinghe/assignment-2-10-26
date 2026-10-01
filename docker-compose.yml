@@ -1,0 +1,38 @@
+name: assignment
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: assignment
+    ports: ["3306:3306"]
+    volumes: [mysql_data:/var/lib/mysql]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend-laravel
+    env_file: ./backend-laravel/.env.${APP_ENV:-development}
+    environment:
+      DATABASE_URL: mysql://root:root@mysql:3306/assignment
+    volumes:
+      - uploads_data:/var/www/html/storage/app/uploads
+    depends_on:
+      mysql: { condition: service_healthy }
+    ports: ["4000:80"]
+
+  frontend:
+    build:
+      context: ./frontend
+      args: { APP_ENV: "${APP_ENV:-production}" }
+    environment:
+      API_INTERNAL_URL: http://backend/api
+    depends_on: [backend]
+    ports: ["3000:3000"]
+
+volumes:
+  mysql_data:
+  uploads_data:
